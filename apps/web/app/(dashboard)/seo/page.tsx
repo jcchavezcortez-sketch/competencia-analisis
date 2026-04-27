@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { todayPE, formatDate } from '@/lib/utils'
 import type { SeoSnapshot, Site } from '@competencia/shared'
 
-export const revalidate = 3600
+export const revalidate = 300
 
 export default async function SeoPage() {
   const db = createClient()

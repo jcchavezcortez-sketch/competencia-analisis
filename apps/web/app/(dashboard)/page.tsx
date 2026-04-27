@@ -5,7 +5,7 @@ import { todayPE, formatDate, alertLevelLabel, alertLevelColor, scoreColor } fro
 import Link from 'next/link'
 import type { Alert, DailyReport, AggressivenessEntry, PageSpeedSnapshot } from '@competencia/shared'
 
-export const revalidate = 3600
+export const revalidate = 300
 
 async function getDashboardData(date: string) {
   const db = createClient()

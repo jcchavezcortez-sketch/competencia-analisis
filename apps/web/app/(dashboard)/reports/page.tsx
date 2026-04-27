@@ -5,7 +5,7 @@ import { formatDate } from '@/lib/utils'
 import type { DailyReport, AggressivenessEntry } from '@competencia/shared'
 import Link from 'next/link'
 
-export const revalidate = 3600
+export const revalidate = 300
 
 export default async function ReportsPage() {
   const db = createClient()

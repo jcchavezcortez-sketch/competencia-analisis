@@ -4,7 +4,7 @@ import { todayPE, formatDate } from '@/lib/utils'
 import type { Screenshot, Site } from '@competencia/shared'
 import Image from 'next/image'
 
-export const revalidate = 3600
+export const revalidate = 300
 
 export default async function ScreenshotsPage({
   searchParams,

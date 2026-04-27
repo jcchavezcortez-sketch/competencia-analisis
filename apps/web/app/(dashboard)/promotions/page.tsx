@@ -5,7 +5,7 @@ import { todayPE, formatDate } from '@/lib/utils'
 import type { Promotion, Site } from '@competencia/shared'
 import { PROMO_TYPE_LABELS } from '@competencia/shared'
 
-export const revalidate = 3600
+export const revalidate = 300
 
 const PROMO_TYPES = Object.keys(PROMO_TYPE_LABELS) as (keyof typeof PROMO_TYPE_LABELS)[]
 

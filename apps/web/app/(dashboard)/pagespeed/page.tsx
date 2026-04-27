@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { todayPE, formatDate, scoreColor } from '@/lib/utils'
 import type { PageSpeedSnapshot, Site } from '@competencia/shared'
 
-export const revalidate = 3600
+export const revalidate = 300
 
 function ScoreBar({ score }: { score: number | null }) {
   const pct = score ?? 0

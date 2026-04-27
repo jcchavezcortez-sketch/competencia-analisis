@@ -46,6 +46,15 @@ jobs:
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
         run: pnpm scrape
 
+      - name: Revalidate Vercel cache
+        if: always()
+        run: |
+          if [ -n "${{ secrets.NEXTAUTH_URL }}" ] && [ -n "${{ secrets.REVALIDATE_SECRET }}" ]; then
+            curl -fsS -X POST "${{ secrets.NEXTAUTH_URL }}/api/revalidate?secret=${{ secrets.REVALIDATE_SECRET }}"
+          else
+            echo "NEXTAUTH_URL or REVALIDATE_SECRET not configured; skipping revalidation"
+          fi
+
       - name: Upload scrape logs
         if: always()
         uses: actions/upload-artifact@v4
