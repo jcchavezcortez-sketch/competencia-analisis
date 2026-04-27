@@ -1,0 +1,23 @@
+{
+  "name": "scraper",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@competencia/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.43.4",
+    "playwright": "^1.44.0",
+    "resend": "^3.3.0",
+    "winston": "^3.13.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.15.2",
+    "typescript": "^5.4.5"
+  }
+}

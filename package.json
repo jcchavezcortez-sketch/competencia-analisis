@@ -1,0 +1,15 @@
+{
+  "name": "competencia-analisis",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:scraper": "pnpm --filter scraper dev",
+    "build:web": "pnpm --filter web build",
+    "scrape": "pnpm --filter scraper run start",
+    "install:playwright": "pnpm --filter scraper exec playwright install chromium --with-deps"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
