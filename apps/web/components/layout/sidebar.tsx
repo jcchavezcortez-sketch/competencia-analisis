@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, Tag, Gauge,
-  Bell, FileText, Menu, X,
+  Megaphone, Bell, FileText, Menu, X,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -12,6 +12,7 @@ const NAV = [
   { href: '/', label: 'Resumen', icon: LayoutDashboard },
   { href: '/competitors', label: 'Competidores', icon: Users },
   { href: '/promotions', label: 'Bonos de Bienvenida', icon: Tag },
+  { href: '/ads', label: 'Comunicación Ads', icon: Megaphone },
   { href: '/pagespeed', label: 'PageSpeed', icon: Gauge },
   { href: '/alerts', label: 'Alertas', icon: Bell },
   { href: '/reports', label: 'Reportes', icon: FileText },
