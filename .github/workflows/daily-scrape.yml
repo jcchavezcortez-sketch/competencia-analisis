@@ -6,7 +6,8 @@ on:
     - cron: '0 11 * * *'
   # Permite ejecutar manualmente desde GitHub UI
   workflow_dispatch:
-
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   scrape:
     name: Run daily scraper
@@ -46,14 +47,32 @@ jobs:
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
         run: pnpm scrape
 
-      - name: Revalidate Vercel cache
+            - name: Revalidate Vercel cache
         if: always()
+        env:
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
         run: |
-          if [ -n "${{ secrets.NEXTAUTH_URL }}" ] && [ -n "${{ secrets.REVALIDATE_SECRET }}" ]; then
-            curl -fsS -X POST "${{ secrets.NEXTAUTH_URL }}/api/revalidate?secret=${{ secrets.REVALIDATE_SECRET }}"
-          else
-            echo "NEXTAUTH_URL or REVALIDATE_SECRET not configured; skipping revalidation"
+          if [ -z "$NEXTAUTH_URL" ] || [ -z "$REVALIDATE_SECRET" ]; then
+            echo "::notice::NEXTAUTH_URL or REVALIDATE_SECRET not configured. Skipping Vercel revalidation."
+            exit 0
           fi
+
+          URL="${NEXTAUTH_URL%/}/api/revalidate?secret=${REVALIDATE_SECRET}"
+
+          echo "Revalidating Vercel cache..."
+          HTTP_STATUS=$(curl -s -o /tmp/revalidate-response.json -w "%{http_code}" "$URL" || true)
+
+          echo "HTTP status: $HTTP_STATUS"
+          cat /tmp/revalidate-response.json || true
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Vercel cache revalidated successfully."
+          else
+            echo "::notice::Vercel revalidation failed with HTTP $HTTP_STATUS, but scraper data was saved successfully."
+          fi
+
+          exit 0
 
       - name: Upload scrape logs
         if: always()
