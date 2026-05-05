@@ -8,6 +8,24 @@ import Link from 'next/link'
 
 export const revalidate = 300
 
+function isAcquisitionChange(summary: string): boolean {
+  const text = summary.toLowerCase()
+
+  return [
+    'registro',
+    'bienvenida',
+    'regalo',
+    'ftd',
+    'primer depósito',
+    'primer deposito',
+    'recarga',
+    'freebet',
+    'giros',
+    'bono',
+    'rollover',
+  ].some(term => text.includes(term))
+}
+
 export default async function ReportDetailPage({ params }: { params: { date: string } }) {
   const db = createClient()
 
@@ -15,18 +33,26 @@ export default async function ReportDetailPage({ params }: { params: { date: str
     .from('daily_reports')
     .select('*')
     .eq('report_date', params.date)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   if (!data) notFound()
+
   const report = data as DailyReport
   const ranking = (report.aggressiveness_ranking ?? []) as AggressivenessEntry[]
+  const promoChanges = ((report.new_promos ?? []) as { siteName: string; type: string; level: string; summary: string }[])
+    .filter(p => isAcquisitionChange(p.summary ?? ''))
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/reports" className="text-gray-500 hover:text-gray-300 text-sm">← Reportes</Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-100">Reporte {formatDate(report.report_date)}</h1>
+          <h1 className="text-2xl font-bold text-gray-100">Reporte de Captación {formatDate(report.report_date)}</h1>
+          <p className="text-xs text-gray-500 mt-1">
+            Enfoque: registro, bienvenida, regalo, FTD / primer depósito y recargas.
+          </p>
         </div>
       </div>
 
@@ -39,7 +65,7 @@ export default async function ReportDetailPage({ params }: { params: { date: str
 
       {ranking.length > 0 && (
         <Card>
-          <CardTitle>Ranking Agresividad Promocional</CardTitle>
+          <CardTitle>Ranking de agresividad en bonos de captación</CardTitle>
           <div className="space-y-3">
             {ranking.map((entry, i) => (
               <Link key={entry.site_slug} href={`/competitors/${entry.site_slug}`}>
@@ -56,7 +82,7 @@ export default async function ReportDetailPage({ params }: { params: { date: str
                     {entry.max_bonus && (
                       <div className="text-sm font-bold text-green-400">S/{entry.max_bonus}</div>
                     )}
-                    <div className="text-xs text-gray-500">{entry.promo_count} promos · score {entry.score}</div>
+                    <div className="text-xs text-gray-500">{entry.promo_count} bonos · score {entry.score}</div>
                   </div>
                 </div>
               </Link>
@@ -65,33 +91,34 @@ export default async function ReportDetailPage({ params }: { params: { date: str
         </Card>
       )}
 
+      {promoChanges.length > 0 && (
+        <Card>
+          <CardTitle>Cambios relevantes en bonos de registro / FTD</CardTitle>
+          <div className="space-y-2">
+            {promoChanges.map((p, i) => (
+              <div key={i} className="flex items-center gap-3 p-2 rounded bg-gray-800/50 text-sm">
+                <Badge variant={p.level === 'high' ? 'red' : p.level === 'medium' ? 'yellow' : 'blue'}>
+                  {p.level}
+                </Badge>
+                <span className="text-xs text-gray-500">{p.siteName}</span>
+                <span className="text-gray-300">{p.summary}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {report.conclusions && (
         <Card>
-          <CardTitle>Conclusiones</CardTitle>
+          <CardTitle>Conclusiones comerciales</CardTitle>
           <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{report.conclusions}</p>
         </Card>
       )}
 
       {report.recommendations && (
         <Card>
-          <CardTitle>Recomendaciones</CardTitle>
+          <CardTitle>Recomendaciones de captación</CardTitle>
           <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{report.recommendations}</p>
-        </Card>
-      )}
-
-      {(report.new_promos as unknown[])?.length > 0 && (
-        <Card>
-          <CardTitle>Cambios de Promociones</CardTitle>
-          <div className="space-y-2">
-            {(report.new_promos as { siteName: string; type: string; level: string; summary: string }[]).map((p, i) => (
-              <div key={i} className="flex items-center gap-3 p-2 rounded bg-gray-800/50 text-sm">
-                <Badge variant={p.level === 'high' ? 'red' : p.level === 'medium' ? 'yellow' : 'blue'}>
-                  {p.level}
-                </Badge>
-                <span className="text-gray-300">{p.summary}</span>
-              </div>
-            ))}
-          </div>
         </Card>
       )}
     </div>

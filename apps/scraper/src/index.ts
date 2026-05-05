@@ -1,10 +1,8 @@
 import 'dotenv/config'
 import { ScraperBrowser } from './scrapers/base.js'
-import { takeScreenshots } from './scrapers/screenshots.js'
-import { scrapeSeo } from './scrapers/seo.js'
 import { scrapePromotions } from './scrapers/promotions.js'
 import { scrapePageSpeed } from './scrapers/pagespeed.js'
-import { diffPromotions, diffSeo, diffPageSpeed } from './analyzers/diff.js'
+import { diffPromotions, diffPageSpeed } from './analyzers/diff.js'
 import { generateDailyConclusions, generateAlertConclusion, buildAggressivenessRanking } from './analyzers/ai.js'
 import { sendAlertEmail, sendDailyReportEmail } from './reporters/email.js'
 import {
@@ -13,10 +11,9 @@ import {
   saveAlert, markAlertEmailSent, saveDailyReport,
   createScrapeLog, updateScrapeLog,
 } from './db/queries.js'
-import { ensureBucketExists } from './storage/upload.js'
 import { logger } from './utils/logger.js'
 import { randomDelay } from './utils/retry.js'
-import type { Promotion, SeoSnapshot, PageSpeedSnapshot } from '@competencia/shared'
+import type { Promotion, PageSpeedSnapshot } from '@competencia/shared'
 import { mkdir } from 'fs/promises'
 
 async function run(): Promise<void> {
@@ -34,9 +31,6 @@ async function run(): Promise<void> {
   const steps: unknown[] = []
   const stats = { sitesOk: 0, sitesFailed: 0, totalPromos: 0, totalChanges: 0, alertsSent: 0 }
 
-  // Asegurar que el bucket de storage existe
-  await ensureBucketExists()
-
   const sites = await getActiveSites()
   logger.info(`Sitios a scrapear: ${sites.map(s => s.name).join(', ')}`)
 
@@ -46,7 +40,6 @@ async function run(): Promise<void> {
   // Datos acumulados para el reporte
   const promosBySiteRaw: Record<string, { name: string; promos: Promotion[] }> = {}
   const psiDataRaw: Record<string, { mobile?: PageSpeedSnapshot; desktop?: PageSpeedSnapshot }> = {}
-  const seoDataRaw: Record<string, SeoSnapshot> = {}
   const allDiffs: Array<{ siteName: string; type: string; level: string; summary: string }> = []
 
   for (const site of sites) {
@@ -62,64 +55,7 @@ async function run(): Promise<void> {
     }
 
     try {
-      // 1. Screenshots
-      try {
-        await takeScreenshots(browser, site, snapshot.id, today)
-        steps.push({ site: site.slug, step: 'screenshots', status: 'ok', duration_ms: 0 })
-      } catch (err) {
-        logger.error(`[${site.name}] screenshots error: ${(err as Error).message}`)
-        steps.push({ site: site.slug, step: 'screenshots', status: 'error', error: (err as Error).message, duration_ms: 0 })
-      }
-
-      await randomDelay(2000, 4000)
-
-      // 2. SEO
-      const seoResult = await scrapeSeo(browser, site, snapshot.id, today)
-      if (seoResult) {
-        await saveSeoSnapshot(seoResult)
-        seoDataRaw[site.slug] = { ...seoResult, id: '', created_at: '' }
-
-        // Diff SEO
-        const seoDiffs = await diffSeo(site.id, site.name, { ...seoResult, id: '', created_at: '' }, yesterday)
-        for (const diff of seoDiffs) {
-          const conclusion = await generateAlertConclusion(site.name, 'seo_change', diff.field, diff.before, diff.after)
-          const alertId = await saveAlert({
-            site_id: site.id,
-            source_type: 'seo',
-            alert_level: diff.alertLevel,
-            title: `${site.name}: cambio en ${diff.field}`,
-            description: `${diff.field}: "${diff.before}" → "${diff.after}"`,
-            before_data: { [diff.field]: diff.before },
-            after_data: { [diff.field]: diff.after },
-            url: site.url,
-            conclusion,
-          })
-
-          if (diff.alertLevel === 'high') {
-            const sent = await sendAlertEmail({
-              siteName: site.name,
-              alertLevel: diff.alertLevel,
-              title: `Cambio en ${diff.field}`,
-              description: `El campo SEO "${diff.field}" cambió`,
-              summary: `${diff.before} → ${diff.after}`,
-              before: { [diff.field]: diff.before },
-              after: { [diff.field]: diff.after },
-              url: site.url,
-              conclusion,
-            })
-            if (sent) { await markAlertEmailSent(alertId); stats.alertsSent++ }
-          }
-
-          allDiffs.push({ siteName: site.name, type: 'seo', level: diff.alertLevel, summary: `SEO ${diff.field}: ${diff.before} → ${diff.after}` })
-          stats.totalChanges++
-        }
-        steps.push({ site: site.slug, step: 'seo', status: 'ok', duration_ms: 0 })
-      } else {
-        steps.push({ site: site.slug, step: 'seo', status: 'error', error: 'null result', duration_ms: 0 })
-      }
-
-      await randomDelay(2000, 4000)
-
+      // 1. Promociones / bonos de bienvenida
       // 3. Promociones
       const promos = await scrapePromotions(browser, site, snapshot.id, today)
       if (promos.length > 0) {
@@ -172,7 +108,7 @@ async function run(): Promise<void> {
 
       await randomDelay(3000, 6000)
 
-      // 4. PageSpeed
+      // 2. PageSpeed
       const psiResults = await scrapePageSpeed(site, snapshot.id, today)
       for (const psi of psiResults) {
         await savePageSpeed(psi)
@@ -240,7 +176,7 @@ async function run(): Promise<void> {
     date: today,
     promosBySite: promosBySiteForAI,
     psiData: psiDataRaw,
-    seoData: seoDataRaw,
+    seoData: {},
     changesCount: stats.totalChanges,
     ownBrandSlug: 'teapuesto',
   })
@@ -252,7 +188,7 @@ async function run(): Promise<void> {
     executive_summary: executiveSummary,
     aggressiveness_ranking: aggressivenessRanking,
     new_promos: allDiffs.filter(d => d.type === 'promo'),
-    seo_changes_summary: { changes: allDiffs.filter(d => d.type === 'seo') },
+    seo_changes_summary: { removed_from_scope: true },
     conclusions,
     recommendations,
   })
