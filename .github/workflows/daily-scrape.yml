@@ -6,8 +6,10 @@ on:
     - cron: '0 11 * * *'
   # Permite ejecutar manualmente desde GitHub UI
   workflow_dispatch:
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   scrape:
     name: Run daily scraper
@@ -47,7 +49,7 @@ jobs:
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
         run: pnpm scrape
 
-            - name: Revalidate Vercel cache
+      - name: Revalidate Vercel cache
         if: always()
         env:
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
